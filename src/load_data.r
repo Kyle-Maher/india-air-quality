@@ -11,7 +11,7 @@ joined <- data.frame()
 for (file in files) {
   df <- read_csv(paste0("data/raw/", file)) %>%
     mutate(file_name = file)
-  joined <- full_join(joined, df, by = "From Date")
+  joined <- bind_rows(joined, df)
 }
 
-saveRDS(joined, "data/loaded/delhi.rds")
+saveRDS(as_tibble(joined), "data/loaded/delhi.rds")

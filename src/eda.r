@@ -13,3 +13,4 @@ df %>%
   ggplot(aes(x = `From Date`)) +
   geom_point(aes(y = `PM2.5 (ug/m3)`))
 
+df %>% head() %>% View()
