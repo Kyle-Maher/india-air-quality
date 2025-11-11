@@ -71,3 +71,53 @@ delhi_long <- delhi2017 |>
 # RECOMMENDED: Make this plot larger in order to see these patterns
 delhi_long |> autoplot(value)+
     facet_grid(rows = vars(name), scales = "free_y")
+
+# Same concept, but with stacked ggseason plots
+delhi_long |> gg_season(value)+
+    facet_grid(rows = vars(name), scales = "free_y")
+
+# Shows daily seasonality between many of the given pollutants
+delhi_long |> gg_season(value, period = "1 month")+
+    facet_grid(rows = vars(name), scales = "free_y")
+
+# Boxplots of each pollutant, should probably separate this into
+# different plots by units, as the scale for some does not reflect
+# the actual different between distributions
+ggplot(data = delhi_long) +
+    aes(x = name, y = value) +
+    geom_boxplot()+
+    theme(axis.text.x = element_text(angle = 45, vjust = 0.6))
+
+# See that differencing `PM2.5 (ug/m3)` centers the data and using the log
+# tranform stabilizes the variance (mostly), getting us closer to stationarity
+
+delhi2017$logPM25 <- log(delhi2017$`PM2.5 (ug/m3)`) |>
+    difference(24)
+
+#Using Box-Cox transform
+library(forecast)
+BoxCox.lambda(delhi2017$`PM2.5 (ug/m3)`)
+delhi2017$BCPM25 <- BoxCox(delhi2017$`PM2.5 (ug/m3)`, 0.2931797) |>
+    difference(24)
+
+delhi2017 |> autoplot(logPM25)
+delhi2017 |> autoplot(BCPM25)
+
+# Interesting way to check for constant variance?
+delhi_stat <- data.frame(logvar = numeric(10),
+                         boxvar = numeric(10))
+for (i in 1:10){
+    delhi_stat[i,1] <- var(delhi2017$logPM25[
+        floor(nrow(delhi2017)*0.1*(i-1)):floor(nrow(delhi2017)*0.1*i)
+        ], na.rm = TRUE)
+
+    delhi_stat[i,2] <- var(delhi2017$BCPM25[
+        floor(nrow(delhi2017)*0.1*(i-1)):floor(nrow(delhi2017)*0.1*i)
+    ], na.rm = TRUE)
+}
+
+delhi_stat
+
+# Variance looks more constant for Box-Cox transform
+plot(seq(1,10),delhi_stat$boxvar, ylim = c(0,9))
+plot(seq(1,10),delhi_stat$logvar, ylim = c(0,1))
