@@ -159,7 +159,7 @@ df %>%
 
 ```
 
-The World Health Organization recomends PM2.5 levels below $35ug/m^3$ for a daily average and below $12ug/m^3$ for a yearly average. The daily and yearly recomended levels are ploted in red and blue respectively. Only durring the summer months are the PM2.5 levels below the WHO recomended daily limit.
+The World Health Organization recomends PM2.5 levels below $35ug/m^3$ for a daily average and below $12ug/m^3$ for a yearly average. The daily and yearly recomended levels are ploted in red and blue respectively. Only during the summer months are the PM2.5 levels below the WHO recomended daily limit.
 
 
 # Seasonality
@@ -214,7 +214,7 @@ df$logPM25 <- log(df$PM2.5) %>%
 
 # Box-Cox Transformation
 BoxCox.lambda(df$PM2.5)
-df$BCPM25 <- BoxCox(df$PM2.5, 0.2931797) %>%
+df$BCPM25 <- BoxCox(df$PM2.5, BoxCox.lambda(df$PM2.5)) %>%
     difference(24)
 
 df %>% autoplot(logPM25)
@@ -222,7 +222,7 @@ df %>% autoplot(BCPM25)
 ```
 
 
-Differencing PM2.5 centers the data, and using a log transform centers the data, giving a stationary time series.
+Differencing PM2.5 centers the data, and using a log transform centers the data, giving a stationary time series. However, using a Box-Cox transform creates a more stationary time series than the log transform. This method of transformation is likely the better option if we were to move forward with a model choice that requires stationarity.
 
 # Check for Constant Variance
 
@@ -242,7 +242,6 @@ for (i in 1:10){
 
 delhi_stat
 
-```{r pre_boxcox_variance_plot}
 plot(seq(1,10),delhi_stat$logvar, ylim = c(0,1))
 ```
 The Variance changes without transformation.
@@ -250,7 +249,7 @@ The Variance changes without transformation.
 ```{r boxcox_variance_plot}
 plot(seq(1,10),delhi_stat$boxvar, ylim = c(0,9))
 ```
-The BoxCox transformation restuls in stable variances.
+The Box-Cox transformation results in stable variances.
 
 
 # World Health Organization Recomended Limits:
