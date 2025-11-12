@@ -1,0 +1,148 @@
+---
+title: "Final Project Exploratory Data Analysis"
+author: "Aidan Frederick, Ben Walter, Kyle Maher"
+date: today
+format:
+  pdf:
+    self-contained: true
+documentclass: article
+execute:
+  warning: false
+  message: false
+header-includes:
+  - \usepackage{pdfpages}
+---
+
+<!-- Directions: 
+Conduct exploratory data analysis; visualize trends, seasonality, and stationarity tests. Visual and statistical exploration with a written summary. -->
+
+```{r setup}
+library(fpp3)
+set.seed(280)  # Reprodicibility
+```
+
+```{r}
+
+data <- readRDS("data/loaded/delhi.rds")
+
+delhi_city <- data %>%
+  filter(file_name == "DL008.csv")
+
+observation_counts <- delhi_city %>%
+  summarise(across(everything(), ~sum(!is.na(.)))) %>%
+  pivot_longer(cols = everything()) %>%
+  arrange(desc(value)) %>%
+  mutate(percent = (value / nrow(delhi_city)) * 100)
+
+observation_counts
+```
+
+### Select Desired Parameters, Rename Parameters, Filter Start Date
+
+```{r}
+rare_parameters <- observation_counts %>%
+  filter(percent < 2) %>%
+  pull(name)
+
+df <- delhi_city %>%
+  select(-all_of(rare_parameters), -file_name, -`From Date`, -`Ozone (ppb)`) %>%
+  rename(
+    "datetime" = "To Date",
+    "PM2.5" = "PM2.5 (ug/m3)",
+    "PM10" = "PM10 (ug/m3)",
+    "NO" = "NO (ug/m3)",
+    "NO2" = "NO2 (ug/m3)",
+    "NOx" = "NOx (ppb)",
+    "CO" = "CO (mg/m3)",
+    "Benzene" = "Benzene (ug/m3)",
+    "Toluene" = "Toluene (ug/m3)",
+    "Xylene" = "Xylene (ug/m3)"
+  ) %>%
+  as_tsibble(index = datetime) %>%
+  filter(datetime >= as_datetime("2017-08-31 01:00:00"))
+```
+
+### Show Hourly Data Availability
+```{r}
+df %>%
+  as_tibble() %>%
+  summarise(across(everything(), ~sum(!is.na(.)))) %>%
+  pivot_longer(cols = everything()) %>%
+  arrange(desc(value)) %>%
+  mutate(percent = (value / nrow(df)) * 100)
+
+```
+
+### Aggregate to Daily Series
+```{r}
+daily_df <- df %>%
+  index_by(date = as.Date(datetime)) %>%
+  summarise(
+    PM2.5 = mean(PM2.5, na.rm = TRUE),
+    PM10 = mean(PM10, na.rm = TRUE),
+    NO = mean(NO, na.rm = TRUE),
+    NO2 = mean(NO2, na.rm = TRUE),
+    NOx = mean(NOx, na.rm = TRUE),
+    CO = mean(CO, na.rm = TRUE),
+    Benzene = mean(Benzene, na.rm = TRUE),
+    Toluene = mean(Toluene, na.rm = TRUE),
+    Xylene = mean(Xylene, na.rm = TRUE)
+  )
+```
+
+```{r}
+
+daily_df %>%
+  autoplot(PM2.5)
+
+daily_df %>%
+  autoplot(PM10)
+
+daily_df %>%
+  autoplot(NO)
+
+daily_df %>%
+  autoplot(NO2)
+
+daily_df %>%
+  autoplot(NOx)
+
+daily_df %>%
+  autoplot(CO)
+
+daily_df %>%
+  autoplot(Benzene)
+
+daily_df %>%
+  autoplot(Toluene)
+
+daily_df %>%
+  autoplot(Xylene)
+
+```
+
+# Yearly Seasonality for Particulates
+```{r}
+
+df %>%
+  gg_season(PM2.5, period = "year")
+
+```
+
+Winter months have more fine particulates.
+
+
+### Particulates With World Health Organization Recomendation Limit
+```{r}
+df %>%
+  index_by(date = as.Date(datetime)) %>%
+  summarise(PM2.5 = mean(PM2.5, na.rm = TRUE)) %>%
+  autoplot(PM2.5) +
+  geom_hline(yintercept = 35, color = "red", linetype = "dashed") +
+  geom_hline(yintercept = 12, color = "blue", linetype = "dashed")
+
+
+
+```
+
+Fine particulate ammounts are significantly above recomended levels
