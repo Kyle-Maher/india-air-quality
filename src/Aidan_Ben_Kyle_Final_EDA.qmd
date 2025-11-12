@@ -28,7 +28,7 @@ set.seed(280)  # Reprodicibility
 # Setup 
 ### Read Data
 ```{r read_data}
-data <- readRDS("data/loaded/delhi.rds")
+data <- readRDS("../data/loaded/delhi.rds")
 
 ```
 
