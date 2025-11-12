@@ -16,32 +16,44 @@ header-includes:
 <!-- Directions: 
 Conduct exploratory data analysis; visualize trends, seasonality, and stationarity tests. Visual and statistical exploration with a written summary. -->
 
+# Packages
 ```{r setup}
-library(fpp3)
+library(fpp3) # Time Series Plots and Forecasting
+library(corrplot) # Correlation Plot
+library(forecast) # BoxCox Transformation
+library(scales) # Log Scale Tick Lables
 set.seed(280)  # Reprodicibility
 ```
 
-```{r}
-
+# Setup 
+### Read Data
+```{r read_data}
 data <- readRDS("data/loaded/delhi.rds")
 
+```
+
+### Filter to Delhi
+```{r filter_file}
 delhi_city <- data %>%
   filter(file_name == "DL008.csv")
+```
+
+### Determine Parameter Counts
+```{r observation_counts}
 
 observation_counts <- delhi_city %>%
   summarise(across(everything(), ~sum(!is.na(.)))) %>%
   pivot_longer(cols = everything()) %>%
   arrange(desc(value)) %>%
-  mutate(percent = (value / nrow(delhi_city)) * 100)
+  mutate(percent_available = (value / nrow(delhi_city)) * 100)
 
 observation_counts
 ```
 
-### Select Desired Parameters, Rename Parameters, Filter Start Date
-
-```{r}
+### Drop Parameters Available For Less than 2% of Hours, Rename Columns, & Filter Date Range
+```{r drop_rename_filter}
 rare_parameters <- observation_counts %>%
-  filter(percent < 2) %>%
+  filter(percent_available < 2) %>%
   pull(name)
 
 df <- delhi_city %>%
@@ -63,18 +75,18 @@ df <- delhi_city %>%
 ```
 
 ### Show Hourly Data Availability
-```{r}
+```{r hourly_available}
 df %>%
   as_tibble() %>%
   summarise(across(everything(), ~sum(!is.na(.)))) %>%
   pivot_longer(cols = everything()) %>%
   arrange(desc(value)) %>%
-  mutate(percent = (value / nrow(df)) * 100)
+  mutate(percent_available = (value / nrow(df)) * 100)
 
 ```
 
 ### Aggregate to Daily Series
-```{r}
+```{r aggregate_daily}
 daily_df <- df %>%
   index_by(date = as.Date(datetime)) %>%
   summarise(
@@ -90,7 +102,20 @@ daily_df <- df %>%
   )
 ```
 
-```{r}
+
+### Show Daily Availability
+```{r daily_available}
+daily_df %>%
+  as_tibble() %>%
+  summarise(across(everything(), ~sum(!is.na(.)))) %>%
+  pivot_longer(cols = everything()) %>%
+  arrange(desc(value)) %>%
+  mutate(percent_available = (value / nrow(daily_df)) * 100)
+
+```
+
+# Plot Each Parameter
+```{r plot_each}
 
 daily_df %>%
   autoplot(PM2.5)
@@ -121,19 +146,10 @@ daily_df %>%
 
 ```
 
-# Yearly Seasonality for Particulates
-```{r}
-
-df %>%
-  gg_season(PM2.5, period = "year")
-
-```
-
-Winter months have more fine particulates.
 
 
-### Particulates With World Health Organization Recomendation Limit
-```{r}
+# Recomended Limit for PM2.5
+```{r PM2.5_limts}
 df %>%
   index_by(date = as.Date(datetime)) %>%
   summarise(PM2.5 = mean(PM2.5, na.rm = TRUE)) %>%
@@ -141,8 +157,139 @@ df %>%
   geom_hline(yintercept = 35, color = "red", linetype = "dashed") +
   geom_hline(yintercept = 12, color = "blue", linetype = "dashed")
 
+```
 
+The World Health Organization recomends PM2.5 levels below $35ug/m^3$ for a daily average and below $12ug/m^3$ for a yearly average. The daily and yearly recomended levels are ploted in red and blue respectively. Only durring the summer months are the PM2.5 levels below the WHO recomended daily limit.
+
+
+# Seasonality
+
+```{r seasonality}
+
+gg_season(df, PM2.5, period = "1 year") +
+  labs(title = "Yearly Seasonailty")
+
+gg_season(df, PM2.5, period = "1 month") +
+  labs(title = "Monthly Seasonailty")
+
+gg_season(df, PM2.5, period = "1 week") +
+  labs(title = "Weekly Seasonailty")
+
+gg_season(df, PM2.5, period = "1 day") +
+  labs(title = "Daily Seasonailty")
 
 ```
 
-Fine particulate ammounts are significantly above recomended levels
+
+# Plot Parameters Together
+```{r plot_df_long}
+
+df_long <- df %>% pivot_longer(c(2:10))
+
+df_long %>% autoplot(value) +
+    facet_grid(rows = vars(name), scales = "free_y")
+
+df_long %>% gg_season(value) +
+    facet_grid(rows = vars(name), scales = "free_y")
+
+```
+
+# Parameter Correlations
+
+```{r correlation_matrix}
+
+M <- cor(x = df[ , c(2:10)],
+         y = df[ , c(2:10)],
+         use = "na.or.complete")
+corrplot(M)
+
+```
+High concentrations of CO, NO, NO2, NOx, PM2.5, and PM10 generally occur at the same time. High concentrations of Benzene, Toluene, and Xylene generally occur at the same time.
+
+# PM2.5 as a Stationary Time Series
+```{r stationarity}
+
+df$logPM25 <- log(df$PM2.5) %>%
+    difference(24)
+
+# Box-Cox Transformation
+BoxCox.lambda(df$PM2.5)
+df$BCPM25 <- BoxCox(df$PM2.5, 0.2931797) %>%
+    difference(24)
+
+df %>% autoplot(logPM25)
+df %>% autoplot(BCPM25)
+```
+
+
+Differencing PM2.5 centers the data, and using a log transform centers the data, giving a stationary time series.
+
+# Check for Constant Variance
+
+```{r variance_check}
+
+delhi_stat <- data.frame(logvar = numeric(10),
+                         boxvar = numeric(10))
+for (i in 1:10){
+    delhi_stat[i,1] <- var(df$logPM25[
+        floor(nrow(df)*0.1*(i-1)):floor(nrow(df)*0.1*i)
+        ], na.rm = TRUE)
+
+    delhi_stat[i,2] <- var(df$BCPM25[
+        floor(nrow(df)*0.1*(i-1)):floor(nrow(df)*0.1*i)
+    ], na.rm = TRUE)
+}
+
+delhi_stat
+
+```{r pre_boxcox_variance_plot}
+plot(seq(1,10),delhi_stat$logvar, ylim = c(0,1))
+```
+The Variance changes without transformation.
+
+```{r boxcox_variance_plot}
+plot(seq(1,10),delhi_stat$boxvar, ylim = c(0,9))
+```
+The BoxCox transformation restuls in stable variances.
+
+
+# World Health Organization Recomended Limits:
+CO: ≤9 ppm  
+PM₂.₅: ≤15 µg/m³  
+PM₁₀: ≤45 µg/m³  
+NO₂: ≤25 µg/m³  
+Benzene: As low as possible (<5 µg/m³)  
+Toluene: ≤260 µg/m³  
+Xylene: ≤870 µg/m³  
+
+
+# Scaled Parameters by Recomended Limits
+```{r scaled_boxplots}
+
+df_scaled <- df %>%
+  select(-NOx, -NO) %>%
+  mutate(
+    PM2.5 = PM2.5 / 15,
+    PM10 = PM10 / 45,
+    CO = CO / 9,
+    NO2 = NO2 / 25,
+    Benzene = Benzene / 1,
+    Toluene = Toluene / 260,
+    Xylene = Xylene / 870
+  ) %>%
+  pivot_longer(c(2:8))
+
+ggplot(data = df_scaled) +
+    aes(x = name, y = value, color = name) +
+    geom_boxplot() +
+    scale_y_log10(labels = label_number()) +
+    theme(axis.text.x = element_text(angle = 45, vjust = 0.6)) +
+    labs(
+      x = NULL,
+      y = "Multiple of Recomended Limit",
+      title = "Air Quaility Parameters by Recomended Limit"
+    )
+```
+
+# Summary
+Focus will be given to PM2.5 as it is a good indicator of overall air quality. It was found that PM2.5 is typically much above the recomended limits set by the World Heath Organization. There is seasonality present, particularly at the yearly, daily, and hourly levels. Presence of PM2.5 is correlated with PM10, NO, NO2, NOx, and CO. While presense of Benzene, Toluene, and Xylene are not. It was found that a BoxCox transformation was able to transform the PM2.5 series to have constant variance. Future work will focus on creating various forecasting models for the PM2.5 series. 
