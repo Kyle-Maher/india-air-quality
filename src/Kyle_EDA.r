@@ -127,3 +127,51 @@ df %>%
   geom_hline(yintercept = 35, color = "red", linetype = "dashed") +
   geom_hline(yintercept = 12, color = "blue", linetype = "dashed")
 
+
+
+# Abitrary "Bad Air Score"
+# CO (.25)
+# PM2.5 (.25)
+# Benzene (.1)
+# Toluene (.1)
+# Xylene (.1)
+# PM10 (.1)
+# NOx (.1)
+
+df %>%
+  index_by(date = as.Date(datetime)) %>%
+  summarise(Score = mean(CO * (.25) + PM2.5 * (.25) + Benzene * (.1) + Toluene * (.1) + Xylene * (.1) + PM10 * (.1) + NOx * (.1), na.rm = TRUE)) %>%
+  autoplot(Score)
+
+
+# Chat Says:
+# For a 24-hour period, safe air quality targets are roughly:
+# CO: ≤9 ppm
+# PM₂.₅: ≤15 µg/m³
+# PM₁₀: ≤45 µg/m³
+# NO₂: ≤25 µg/m³
+# Benzene: as low as possible (ideally <5 µg/m³)
+# Toluene: ≤260 µg/m³
+# Xylene: ≤870 µg/m³
+
+df %>%
+  index_by(date = as.Date(datetime)) %>%
+  summarise(Score = mean(
+    (CO / 9) * (.25) +
+      (PM2.5 / 15) * (.25) +
+      (Benzene / 1) * (.25) +
+      (Toluene / 260) * (.05) +
+      (Xylene / 870) * (.05) +
+      (PM10 / 45) * (.05) +
+      (NO2 / 25) * (.1),
+    na.rm = TRUE
+  )) %>%
+  autoplot(Score) +
+  geom_hline(yintercept = 1, color = "red", linetype = "dashed") +
+  labs(
+    y = "Aprox Air Quality Score",
+    x = "Month"
+  )
+
+
+
