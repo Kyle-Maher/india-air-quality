@@ -22,7 +22,7 @@ library(fpp3) # Time Series Plots and Forecasting
 library(corrplot) # Correlation Plot
 library(forecast) # BoxCox Transformation
 library(scales) # Log Scale Tick Lables
-set.seed(280)  # Reprodicibility
+set.seed(280)  # Reproducibility
 ```
 
 # Setup 
@@ -159,7 +159,7 @@ df %>%
 
 ```
 
-The World Health Organization recomends PM2.5 levels below $35ug/m^3$ for a daily average and below $12ug/m^3$ for a yearly average. The daily and yearly recomended levels are ploted in red and blue respectively. Only during the summer months are the PM2.5 levels below the WHO recomended daily limit.
+The World Health Organization recomends PM2.5 levels below $35ug/m^3$ for a daily average and below $12ug/m^3$ for a yearly average. The daily and yearly recomended levels are plotted in red and blue respectively. Only during the summer months are the PM2.5 levels below the WHO recomended daily limit.
 
 
 # Seasonality
@@ -167,16 +167,16 @@ The World Health Organization recomends PM2.5 levels below $35ug/m^3$ for a dail
 ```{r seasonality}
 
 gg_season(df, PM2.5, period = "1 year") +
-  labs(title = "Yearly Seasonailty")
+  labs(title = "Yearly Seasonality")
 
 gg_season(df, PM2.5, period = "1 month") +
-  labs(title = "Monthly Seasonailty")
+  labs(title = "Monthly Seasonality")
 
 gg_season(df, PM2.5, period = "1 week") +
-  labs(title = "Weekly Seasonailty")
+  labs(title = "Weekly Seasonality")
 
 gg_season(df, PM2.5, period = "1 day") +
-  labs(title = "Daily Seasonailty")
+  labs(title = "Daily Seasonality")
 
 ```
 
@@ -244,7 +244,7 @@ delhi_stat
 
 plot(seq(1,10),delhi_stat$logvar, ylim = c(0,1))
 ```
-The Variance changes without transformation.
+The variance changes without transformation.
 
 ```{r boxcox_variance_plot}
 plot(seq(1,10),delhi_stat$boxvar, ylim = c(0,9))
@@ -286,9 +286,9 @@ ggplot(data = df_scaled) +
     labs(
       x = NULL,
       y = "Multiple of Recomended Limit",
-      title = "Air Quaility Parameters by Recomended Limit"
+      title = "Air Quality Parameters by Recomended Limit"
     )
 ```
 
 # Summary
-Focus will be given to PM2.5 as it is a good indicator of overall air quality. It was found that PM2.5 is typically much above the recomended limits set by the World Heath Organization. There is seasonality present, particularly at the yearly, daily, and hourly levels. Presence of PM2.5 is correlated with PM10, NO, NO2, NOx, and CO. While presense of Benzene, Toluene, and Xylene are not. It was found that a BoxCox transformation was able to transform the PM2.5 series to have constant variance. Future work will focus on creating various forecasting models for the PM2.5 series. 
+Focus will be given to PM2.5 as it is a good indicator of overall air quality. It was found that PM2.5 is typically much above the recomended limits set by the World Health Organization. There is seasonality present, particularly at the yearly, daily, and hourly levels. Presence of PM2.5 is correlated with PM10, NO, NO2, NOx, and CO. While presence of Benzene, Toluene, and Xylene are not. It was found that a BoxCox transformation was able to transform the PM2.5 series to have constant variance. Future work will focus on creating various forecasting models for the PM2.5 series. 
