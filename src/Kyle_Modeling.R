@@ -21,6 +21,13 @@ df_weekly <- df %>%
 df_weekly %>%
   autoplot(PM2.5)
 
+df_daily <- df %>%
+  index_by(date = as.Date(datetime)) %>%
+  summarise(PM2.5 = median(PM2.5, na.rm = TRUE))
+
+df_daily %>%
+  autoplot(PM2.5)
+
 # Variance Stablization
 ################################################################################
 
@@ -101,8 +108,46 @@ autoplot(fc, df_weekly)
 fit <- df_weekly %>%
   model(ARIMA(box_cox(PM2.5, lambda_weekly_PM2.5) ~ fourier(K = 6)))
 
+# K_candidates <- 1:22
+# results <- data.frame(K = numeric(), AICc = numeric())
+
+# for (K in K_candidates) {
+#   fit <- df_weekly %>%
+#     model(ARIMA(box_cox(PM2.5, lambda_weekly_PM2.5) ~ fourier(K = K)))
+#   data <- data.frame(K = K, AICc = glance(fit)$AICc)
+#   results <- bind_rows(results, data)
+# }
+# results %>%
+#   filter(AICc == min(results$AICc))
+
+# K = 7 was best with an AICc of 230.221
+readRDS("models/weekly_fit_ARIMA(4,0,0)(1,0,0)[52].rds")
+# fit <- df_weekly %>%
+#   model(ARIMA(box_cox(PM2.5, lambda_weekly_PM2.5) ~ fourier(K = 7)))
+
+
 fc <- forecast(fit, h = 104)
 autoplot(fc, df_weekly)
+
+df_weekly %>%
+  autoplot(PM2.5) +
+  autolayer(fitted(fit), .fitted, color = "red")
+
+# Interpolate
+########################################
+
+df_weekly_filled <- interpolate(fit, df_weekly)
+
+df_weekly_filled %>%
+  autoplot(PM2.5)
+
+# STL Decomposition
+########################################
+dc <- df_weekly_filled %>%
+  model(STL(PM2.5 ~ trend(window = 104) + season(window = "periodic")))
+
+components(dc) %>%
+  autoplot()
 
 # Network
 ################################################################################
@@ -114,4 +159,3 @@ fc <- readRDS("models/weekly_fc_NNAR(13,1,8)[52]")
 # fc <- forecast(fit, h = 104)
 
 autoplot(fc, df_weekly)
-
