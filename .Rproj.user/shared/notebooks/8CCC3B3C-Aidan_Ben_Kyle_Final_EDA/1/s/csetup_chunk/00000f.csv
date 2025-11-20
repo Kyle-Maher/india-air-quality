@@ -1,0 +1,43 @@
+"0","library(fpp3) # Time Series Plots and Forecasting"
+"2","Warning: package ‘fpp3’ was built under R version 4.3.3"
+"2","Registered S3 method overwritten by 'tsibble':
+  method               from 
+  as_tibble.grouped_df dplyr
+"
+"2","[30m── [1mAttaching packages[22m ─────────────[39m
+"
+"2","[30m[32m✔[30m [34mtibble     [30m 3.2.1     [32m✔[30m [34mtsibble    [30m 1.1.6
+[32m✔[30m [34mdplyr      [30m 1.1.4     [32m✔[30m [34mtsibbledata[30m 0.4.1
+[32m✔[30m [34mtidyr      [30m 1.3.1     [32m✔[30m [34mfeasts     [30m 0.4.2
+[32m✔[30m [34mlubridate  [30m 1.9.4     [32m✔[30m [34mfable      [30m 0.4.1
+[32m✔[30m [34mggplot2    [30m 3.5.2     [39m
+"
+"2","Warning: package ‘tibble’ was built under R version 4.3.3"
+"2","Warning: package ‘dplyr’ was built under R version 4.3.3"
+"2","Warning: package ‘tidyr’ was built under R version 4.3.3"
+"2","Warning: package ‘lubridate’ was built under R version 4.3.3"
+"2","Warning: package ‘tsibble’ was built under R version 4.3.3"
+"2","Warning: package ‘tsibbledata’ was built under R version 4.3.3"
+"2","Warning: package ‘fabletools’ was built under R version 4.3.3"
+"2","Warning: package ‘fable’ was built under R version 4.3.3"
+"2","[30m── [1mConflicts[22m ──── fpp3_conflicts ──
+[31m✖[30m [34mlubridate[30m::[32mdate()[30m    masks [34mbase[30m::date()
+[31m✖[30m [34mdplyr[30m::[32mfilter()[30m      masks [34mstats[30m::filter()
+[31m✖[30m [34mtsibble[30m::[32mintersect()[30m masks [34mbase[30m::intersect()
+[31m✖[30m [34mtsibble[30m::[32minterval()[30m  masks [34mlubridate[30m::interval()
+[31m✖[30m [34mdplyr[30m::[32mlag()[30m         masks [34mstats[30m::lag()
+[31m✖[30m [34mtsibble[30m::[32msetdiff()[30m   masks [34mbase[30m::setdiff()
+[31m✖[30m [34mtsibble[30m::[32munion()[30m     masks [34mbase[30m::union()[39m
+"
+"0","library(corrplot) # Correlation Plot"
+"2","Warning: package ‘corrplot’ was built under R version 4.3.3"
+"2","corrplot 0.95 loaded
+"
+"0","library(forecast) # BoxCox Transformation"
+"2","Warning: package ‘forecast’ was built under R version 4.3.3"
+"2","Registered S3 method overwritten by 'quantmod':
+  method            from
+  as.zoo.data.frame zoo 
+"
+"0","library(scales) # Log Scale Tick Lables"
+"0","set.seed(280)  # Reprodicibility"

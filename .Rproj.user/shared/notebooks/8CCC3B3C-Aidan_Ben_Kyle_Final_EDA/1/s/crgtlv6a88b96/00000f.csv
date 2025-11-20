@@ -1,0 +1,7 @@
+"0","df %>%"
+"0","  index_by(date = as.Date(datetime)) %>%"
+"0","  summarise(PM2.5 = mean(PM2.5, na.rm = TRUE)) %>%"
+"0","  autoplot(PM2.5) +"
+"0","  geom_hline(yintercept = 35, color = ""red"", linetype = ""dashed"") +"
+"0","  geom_hline(yintercept = 12, color = ""blue"", linetype = ""dashed"")"
+"0",""
