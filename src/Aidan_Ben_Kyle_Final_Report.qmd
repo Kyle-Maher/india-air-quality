@@ -28,32 +28,121 @@ set.seed(280)  # Reproducibility
 # Setup 
 ### Read Data
 ```{r read_data}
-data <- readRDS("../data/loaded/delhi_filter.rds")
-df <- data
+data <- readRDS("../data/loaded/delhi.rds")
 
-df_monthly <- data %>%
-  select(PM2.5) %>%
-  index_by(month = yearmonth(datetime)) %>%
-  summarise(PM2.5 = median(PM2.5, na.rm = TRUE))
+```
 
-df_monthly %>%
-  autoplot(PM2.5)
+### Filter to Delhi
+```{r filter_file}
+delhi_city <- data %>%
+  filter(file_name == "DL008.csv")
+```
 
-df_weekly <- data %>%
-  select(PM2.5) %>%
-  index_by(week = yearweek(datetime)) %>%
-  summarise(PM2.5 = median(PM2.5, na.rm = TRUE))
+### Determine Parameter Counts
+```{r observation_counts}
 
-df_weekly %>%
-  autoplot(PM2.5)
+observation_counts <- delhi_city %>%
+  summarise(across(everything(), ~sum(!is.na(.)))) %>%
+  pivot_longer(cols = everything()) %>%
+  arrange(desc(value)) %>%
+  mutate(percent_available = (value / nrow(delhi_city)) * 100)
 
-df_daily <- data %>%
-  select(PM2.5) %>%
+observation_counts
+```
+
+### Drop Parameters Available For Less than 2% of Hours, Rename Columns, & Filter Date Range
+```{r drop_rename_filter}
+rare_parameters <- observation_counts %>%
+  filter(percent_available < 2) %>%
+  pull(name)
+
+df <- delhi_city %>%
+  select(-all_of(rare_parameters), -file_name, -`From Date`, -`Ozone (ppb)`) %>%
+  rename(
+    "datetime" = "To Date",
+    "PM2.5" = "PM2.5 (ug/m3)",
+    "PM10" = "PM10 (ug/m3)",
+    "NO" = "NO (ug/m3)",
+    "NO2" = "NO2 (ug/m3)",
+    "NOx" = "NOx (ppb)",
+    "CO" = "CO (mg/m3)",
+    "Benzene" = "Benzene (ug/m3)",
+    "Toluene" = "Toluene (ug/m3)",
+    "Xylene" = "Xylene (ug/m3)"
+  ) %>%
+  as_tsibble(index = datetime) %>%
+  filter(datetime >= as_datetime("2017-08-31 01:00:00"))
+```
+
+### Show Hourly Data Availability
+```{r hourly_available}
+df %>%
+  as_tibble() %>%
+  summarise(across(everything(), ~sum(!is.na(.)))) %>%
+  pivot_longer(cols = everything()) %>%
+  arrange(desc(value)) %>%
+  mutate(percent_available = (value / nrow(df)) * 100)
+
+```
+
+### Aggregate to Daily Series
+```{r aggregate_daily}
+daily_df <- df %>%
   index_by(date = as.Date(datetime)) %>%
-  summarise(PM2.5 = median(PM2.5, na.rm = TRUE))
+  summarise(
+    PM2.5 = mean(PM2.5, na.rm = TRUE),
+    PM10 = mean(PM10, na.rm = TRUE),
+    NO = mean(NO, na.rm = TRUE),
+    NO2 = mean(NO2, na.rm = TRUE),
+    NOx = mean(NOx, na.rm = TRUE),
+    CO = mean(CO, na.rm = TRUE),
+    Benzene = mean(Benzene, na.rm = TRUE),
+    Toluene = mean(Toluene, na.rm = TRUE),
+    Xylene = mean(Xylene, na.rm = TRUE)
+  )
+```
 
-df_daily %>%
+
+### Show Daily Availability
+```{r daily_available}
+daily_df %>%
+  as_tibble() %>%
+  summarise(across(everything(), ~sum(!is.na(.)))) %>%
+  pivot_longer(cols = everything()) %>%
+  arrange(desc(value)) %>%
+  mutate(percent_available = (value / nrow(daily_df)) * 100)
+
+```
+
+# Plot Each Parameter
+```{r plot_each}
+
+daily_df %>%
   autoplot(PM2.5)
+
+daily_df %>%
+  autoplot(PM10)
+
+daily_df %>%
+  autoplot(NO)
+
+daily_df %>%
+  autoplot(NO2)
+
+daily_df %>%
+  autoplot(NOx)
+
+daily_df %>%
+  autoplot(CO)
+
+daily_df %>%
+  autoplot(Benzene)
+
+daily_df %>%
+  autoplot(Toluene)
+
+daily_df %>%
+  autoplot(Xylene)
 
 ```
 
@@ -92,6 +181,18 @@ gg_season(df, PM2.5, period = "1 day") +
 ```
 
 
+# Plot Parameters Together
+```{r plot_df_long}
+
+df_long <- df %>% pivot_longer(c(2:10))
+
+df_long %>% autoplot(value) +
+    facet_grid(rows = vars(name), scales = "free_y")
+
+df_long %>% gg_season(value) +
+    facet_grid(rows = vars(name), scales = "free_y")
+
+```
 
 # Parameter Correlations
 
@@ -189,5 +290,5 @@ ggplot(data = df_scaled) +
     )
 ```
 
-# Conclusion
-TBD
+# Summary
+Focus will be given to PM2.5 as it is a good indicator of overall air quality. It was found that PM2.5 is typically much above the recomended limits set by the World Health Organization. There is seasonality present, particularly at the yearly, daily, and hourly levels. Presence of PM2.5 is correlated with PM10, NO, NO2, NOx, and CO. While presence of Benzene, Toluene, and Xylene are not. It was found that a BoxCox transformation was able to transform the PM2.5 series to have constant variance. Future work will focus on creating various forecasting models for the PM2.5 series. 
