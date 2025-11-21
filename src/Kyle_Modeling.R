@@ -67,7 +67,7 @@ autoplot(fc, df_monthly)
 fit <- df_monthly %>%
   model(NNETAR(box_cox(PM2.5, lambda_monthly_PM2.5)))
 
-fc <- readRDS("models/monthly_fc_NNAR(1,1,2)[12]")
+fc <- readRDS("models/monthly_fc_NNAR(1,1,2)[12].rds")
 # fc <- forecast(fit, h = 30)
 
 autoplot(fc, df_monthly)
@@ -156,7 +156,7 @@ components(dc) %>%
 fit <- df_weekly %>%
   model(NNETAR(box_cox(PM2.5, lambda_weekly_PM2.5)))
 
-fc <- readRDS("models/weekly_fc_NNAR(13,1,8)[52]")
+fc <- readRDS("models/weekly_fc_NNAR(13,1,8)[52].rds")
 # fc <- forecast(fit, h = 104)
 
 autoplot(fc, df_weekly)
@@ -209,33 +209,11 @@ df %>%
   autolayer(filter(df, as.Date(datetime) %in% burning_dates), color = "red")
 
 
-
 # Prophet
 ################################################################################
-fit <- readRDS("models/daily_fit_prophet.rds")
+
+fit <- readRDS("models/hourly_fit_prophet_box-cox.rds")
 # fit <- df %>%
-#   model(
-#     prophet(PM2.5 ~ is_diwali + is_burning_season +
-#         season(period = "day", order = 10) +
-#         season(period = "week", order = 5) +
-#         season(period = "month", order = 3) +
-#         season(period = "year", order = 3)
-#     )
-#   )
-
-fit2 <- readRDS("models/daily_fit_prophet_log.rds")
-# fit2 <- df %>%
-#   model(
-#     prophet(log(PM2.5) ~ is_diwali + is_burning_season +
-#         season(period = "day", order = 10) +
-#         season(period = "week", order = 5) +
-#         season(period = "month", order = 3) +
-#         season(period = "year", order = 3)
-#     )
-#   )
-
-fit3 <- readRDS("models/daily_fit_prophet_box-cox.rds")
-# fit3 <- df %>%
 #   model(
 #     prophet(box_cox(PM2.5, lambda_hourly_PM2.5) ~
 #         is_diwali +
@@ -254,16 +232,39 @@ new_data <- df %>%
     is_burning_season = as.integer(as.Date(datetime) %in% burning_dates)
   )
 
-fc <- forecast(fit, new_data = new_data)
-autoplot(fc, filter(df, as.Date(datetime) > as.Date("2023-01-01")))
-
-fc2 <- forecast(fit2, new_data = new_data)
-autoplot(fc2, filter(df, as.Date(datetime) > as.Date("2023-01-01")))
-
-fc3 <- forecast(fit3, new_data = new_data)
-autoplot(fc3, filter(df, as.Date(datetime) > as.Date("2022-06-01")))
-
-autoplot(df, PM2.5)
+fc <- forecast(fit3, new_data = new_data)
+pA <- autoplot(fc, df)
+PB <- autoplot(fc, filter(df, as.Date(datetime) > as.Date("2022-06-01")))
+ggsave("plots/hourly_prophet_forecast_full_box-cox.png", pA)
+ggsave("plots/hourly_prophet_forecast_zoomed_box-cox.png", p3B)
 
 
+# Other Prophet Models without Box-Cox Transformation
+################################################################################
 
+
+fit <- readRDS("models/hourly_fit_prophet.rds")
+# fit <- df %>%
+#   model(
+#     prophet(PM2.5 ~
+#         is_diwali +
+#         is_burning_season +
+#         season(period = "day", order = 10) +
+#         season(period = "week", order = 5) +
+#         season(period = "month", order = 3) +
+#         season(period = "year", order = 3)
+#     )
+#   )
+
+fit <- readRDS("models/hourly_fit_prophet_log.rds")
+# fit <- df %>%
+#   model(
+#     prophet(log(PM2.5) ~
+#         is_diwali +
+#         is_burning_season +
+#         season(period = "day", order = 10) +
+#         season(period = "week", order = 5) +
+#         season(period = "month", order = 3) +
+#         season(period = "year", order = 3)
+#     )
+#   )
