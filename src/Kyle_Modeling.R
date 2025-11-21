@@ -159,3 +159,29 @@ fc <- readRDS("models/weekly_fc_NNAR(13,1,8)[52]")
 # fc <- forecast(fit, h = 104)
 
 autoplot(fc, df_weekly)
+
+
+
+# Dummy Variable for Diwali
+################################################################################
+diwali_dates <- c(
+  seq(as.Date("2017-10-16"), as.Date("2017-10-20"), by = "day"),
+  seq(as.Date("2018-11-05"), as.Date("2018-11-09"), by = "day"),
+  seq(as.Date("2019-10-25"), as.Date("2019-10-29"), by = "day"),
+  seq(as.Date("2020-11-12"), as.Date("2020-11-16"), by = "day"),
+  seq(as.Date("2021-11-02"), as.Date("2021-11-06"), by = "day"),
+  seq(as.Date("2022-11-22"), as.Date("2022-11-26"), by = "day"),
+  seq(as.Date("2023-11-10"), as.Date("2023-11-14"), by = "day")
+)
+
+df <- df %>%
+  mutate(
+    is_diwali = as.integer(as.Date(datetime) %in% diwali_dates)
+  )
+
+df %>% View()
+
+
+# Prophet
+################################################################################
+
