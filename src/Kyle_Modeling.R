@@ -162,7 +162,7 @@ autoplot(fc, df_weekly)
 
 
 
-# Dummy Variable for Diwali
+# Dummy Variables for Diwali and Burning Season
 ################################################################################
 diwali_dates <- c(
   seq(as.Date("2017-10-16"), as.Date("2017-10-20"), by = "day"),
@@ -174,12 +174,30 @@ diwali_dates <- c(
   seq(as.Date("2023-11-10"), as.Date("2023-11-14"), by = "day")
 )
 
+burning_dates <- c(
+  seq(as.Date("2017-9-15"), as.Date("2017-11-30"), by = "day"),
+  seq(as.Date("2018-9-15"), as.Date("2018-11-30"), by = "day"),
+  seq(as.Date("2019-9-15"), as.Date("2019-11-30"), by = "day"),
+  seq(as.Date("2020-9-15"), as.Date("2020-11-30"), by = "day"),
+  seq(as.Date("2021-9-15"), as.Date("2021-11-30"), by = "day"),
+  seq(as.Date("2022-9-15"), as.Date("2022-11-30"), by = "day"),
+  seq(as.Date("2023-9-15"), as.Date("2023-11-30"), by = "day")
+)
+
 df <- df %>%
   mutate(
-    is_diwali = as.integer(as.Date(datetime) %in% diwali_dates)
+    is_diwali = as.integer(as.Date(datetime) %in% diwali_dates),
+    is_burning_season = as.integer(as.Date(datetime) %in% burning_dates)
   )
 
-df %>% View()
+df %>%
+  autoplot(PM2.5) +
+  autolayer(filter(df, as.Date(datetime) %in% diwali_dates), color = "red")
+
+df %>%
+  autoplot(PM2.5) +
+  autolayer(filter(df, as.Date(datetime) %in% burning_dates, color = "red"))
+
 
 
 # Prophet
