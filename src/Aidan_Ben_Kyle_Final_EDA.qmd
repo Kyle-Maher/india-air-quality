@@ -1,5 +1,5 @@
 ---
-title: "Final Report"
+title: "Final Report EDA"
 author: "Aidan Frederick, Ben Walter, Kyle Maher"
 date: today
 format:

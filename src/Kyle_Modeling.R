@@ -1,6 +1,7 @@
 
 library(fpp3)
-library(forecast)
+library(forecast)  # Box-Cox Transformation
+library(fable.prophet)  # Prophet Model
 
 df <- readRDS("data/loaded/delhi_filter.rds") %>%
   select(PM2.5)
@@ -66,7 +67,7 @@ autoplot(fc, df_monthly)
 fit <- df_monthly %>%
   model(NNETAR(box_cox(PM2.5, lambda_monthly_PM2.5)))
 
-fc <- readRDS("models/monthly_fc_NNAR(1,1,2)[12]")
+fc <- readRDS("models/monthly_fc_NNAR(1,1,2)[12].rds")
 # fc <- forecast(fit, h = 30)
 
 autoplot(fc, df_monthly)
@@ -155,7 +156,115 @@ components(dc) %>%
 fit <- df_weekly %>%
   model(NNETAR(box_cox(PM2.5, lambda_weekly_PM2.5)))
 
-fc <- readRDS("models/weekly_fc_NNAR(13,1,8)[52]")
+fc <- readRDS("models/weekly_fc_NNAR(13,1,8)[52].rds")
 # fc <- forecast(fit, h = 104)
 
 autoplot(fc, df_weekly)
+
+
+
+
+################################################################################
+# Hourly
+################################################################################
+
+# Dummy Variables for Diwali and Burning Season
+################################################################################
+diwali_dates <- c(
+  seq(as.Date("2017-10-16"), as.Date("2017-10-20"), by = "day"),
+  seq(as.Date("2018-11-05"), as.Date("2018-11-09"), by = "day"),
+  seq(as.Date("2019-10-25"), as.Date("2019-10-29"), by = "day"),
+  seq(as.Date("2020-11-12"), as.Date("2020-11-16"), by = "day"),
+  seq(as.Date("2021-11-02"), as.Date("2021-11-06"), by = "day"),
+  seq(as.Date("2022-11-22"), as.Date("2022-11-26"), by = "day"),
+  seq(as.Date("2023-11-10"), as.Date("2023-11-14"), by = "day"),
+  seq(as.Date("2024-10-30"), as.Date("2024-11-03"), by = "day"),
+  seq(as.Date("2025-10-18"), as.Date("2025-10-23"), by = "day")
+)
+
+burning_dates <- c(
+  seq(as.Date("2017-9-15"), as.Date("2017-11-30"), by = "day"),
+  seq(as.Date("2018-9-15"), as.Date("2018-11-30"), by = "day"),
+  seq(as.Date("2019-9-15"), as.Date("2019-11-30"), by = "day"),
+  seq(as.Date("2020-9-15"), as.Date("2020-11-30"), by = "day"),
+  seq(as.Date("2021-9-15"), as.Date("2021-11-30"), by = "day"),
+  seq(as.Date("2022-9-15"), as.Date("2022-11-30"), by = "day"),
+  seq(as.Date("2023-9-15"), as.Date("2023-11-30"), by = "day"),
+  seq(as.Date("2024-9-15"), as.Date("2024-11-30"), by = "day"),
+  seq(as.Date("2025-9-15"), as.Date("2025-11-30"), by = "day")
+)
+
+df <- df %>%
+  mutate(
+    is_diwali = as.integer(as.Date(datetime) %in% diwali_dates),
+    is_burning_season = as.integer(as.Date(datetime) %in% burning_dates)
+  )
+
+df %>%
+  autoplot(PM2.5) +
+  autolayer(filter(df, as.Date(datetime) %in% diwali_dates), color = "red")
+
+df %>%
+  autoplot(PM2.5) +
+  autolayer(filter(df, as.Date(datetime) %in% burning_dates), color = "red")
+
+
+# Prophet
+################################################################################
+
+fit <- readRDS("models/hourly_fit_prophet_box-cox.rds")
+# fit <- df %>%
+#   model(
+#     prophet(box_cox(PM2.5, lambda_hourly_PM2.5) ~
+#         is_diwali +
+#         is_burning_season +
+#         season(period = "day", order = 10) +
+#         season(period = "week", order = 5) +
+#         season(period = "month", order = 3) +
+#         season(period = "year", order = 3)
+#     )
+#   )
+
+new_data <- df %>%
+  new_data(n = 24 * 30 * 12) %>%
+  mutate(
+    is_diwali = as.integer(as.Date(datetime) %in% diwali_dates),
+    is_burning_season = as.integer(as.Date(datetime) %in% burning_dates)
+  )
+
+fc <- forecast(fit3, new_data = new_data)
+pA <- autoplot(fc, df)
+PB <- autoplot(fc, filter(df, as.Date(datetime) > as.Date("2022-06-01")))
+ggsave("plots/hourly_prophet_forecast_full_box-cox.png", pA)
+ggsave("plots/hourly_prophet_forecast_zoomed_box-cox.png", p3B)
+
+
+# Other Prophet Models without Box-Cox Transformation
+################################################################################
+
+
+fit <- readRDS("models/hourly_fit_prophet.rds")
+# fit <- df %>%
+#   model(
+#     prophet(PM2.5 ~
+#         is_diwali +
+#         is_burning_season +
+#         season(period = "day", order = 10) +
+#         season(period = "week", order = 5) +
+#         season(period = "month", order = 3) +
+#         season(period = "year", order = 3)
+#     )
+#   )
+
+fit <- readRDS("models/hourly_fit_prophet_log.rds")
+# fit <- df %>%
+#   model(
+#     prophet(log(PM2.5) ~
+#         is_diwali +
+#         is_burning_season +
+#         season(period = "day", order = 10) +
+#         season(period = "week", order = 5) +
+#         season(period = "month", order = 3) +
+#         season(period = "year", order = 3)
+#     )
+#   )
