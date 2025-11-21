@@ -1,6 +1,7 @@
 
 library(fpp3)
-library(forecast)
+library(forecast)  # Box-Cox Transformation
+library(fable.prophet)  # Prophet Model
 
 df <- readRDS("data/loaded/delhi_filter.rds") %>%
   select(PM2.5)
@@ -162,6 +163,11 @@ autoplot(fc, df_weekly)
 
 
 
+
+################################################################################
+# Hourly
+################################################################################
+
 # Dummy Variables for Diwali and Burning Season
 ################################################################################
 diwali_dates <- c(
@@ -171,7 +177,9 @@ diwali_dates <- c(
   seq(as.Date("2020-11-12"), as.Date("2020-11-16"), by = "day"),
   seq(as.Date("2021-11-02"), as.Date("2021-11-06"), by = "day"),
   seq(as.Date("2022-11-22"), as.Date("2022-11-26"), by = "day"),
-  seq(as.Date("2023-11-10"), as.Date("2023-11-14"), by = "day")
+  seq(as.Date("2023-11-10"), as.Date("2023-11-14"), by = "day"),
+  seq(as.Date("2024-10-30"), as.Date("2024-11-03"), by = "day"),
+  seq(as.Date("2025-10-18"), as.Date("2025-10-23"), by = "day")
 )
 
 burning_dates <- c(
@@ -181,7 +189,9 @@ burning_dates <- c(
   seq(as.Date("2020-9-15"), as.Date("2020-11-30"), by = "day"),
   seq(as.Date("2021-9-15"), as.Date("2021-11-30"), by = "day"),
   seq(as.Date("2022-9-15"), as.Date("2022-11-30"), by = "day"),
-  seq(as.Date("2023-9-15"), as.Date("2023-11-30"), by = "day")
+  seq(as.Date("2023-9-15"), as.Date("2023-11-30"), by = "day"),
+  seq(as.Date("2024-9-15"), as.Date("2024-11-30"), by = "day"),
+  seq(as.Date("2025-9-15"), as.Date("2025-11-30"), by = "day")
 )
 
 df <- df %>%
@@ -196,10 +206,64 @@ df %>%
 
 df %>%
   autoplot(PM2.5) +
-  autolayer(filter(df, as.Date(datetime) %in% burning_dates, color = "red"))
+  autolayer(filter(df, as.Date(datetime) %in% burning_dates), color = "red")
 
 
 
 # Prophet
 ################################################################################
+fit <- readRDS("models/daily_fit_prophet.rds")
+# fit <- df %>%
+#   model(
+#     prophet(PM2.5 ~ is_diwali + is_burning_season +
+#         season(period = "day", order = 10) +
+#         season(period = "week", order = 5) +
+#         season(period = "month", order = 3) +
+#         season(period = "year", order = 3)
+#     )
+#   )
+
+fit2 <- readRDS("models/daily_fit_prophet_log.rds")
+# fit2 <- df %>%
+#   model(
+#     prophet(log(PM2.5) ~ is_diwali + is_burning_season +
+#         season(period = "day", order = 10) +
+#         season(period = "week", order = 5) +
+#         season(period = "month", order = 3) +
+#         season(period = "year", order = 3)
+#     )
+#   )
+
+fit3 <- readRDS("models/daily_fit_prophet_box-cox.rds")
+# fit3 <- df %>%
+#   model(
+#     prophet(box_cox(PM2.5, lambda_hourly_PM2.5) ~
+#         is_diwali +
+#         is_burning_season +
+#         season(period = "day", order = 10) +
+#         season(period = "week", order = 5) +
+#         season(period = "month", order = 3) +
+#         season(period = "year", order = 3)
+#     )
+#   )
+
+new_data <- df %>%
+  new_data(n = 24 * 30 * 12) %>%
+  mutate(
+    is_diwali = as.integer(as.Date(datetime) %in% diwali_dates),
+    is_burning_season = as.integer(as.Date(datetime) %in% burning_dates)
+  )
+
+fc <- forecast(fit, new_data = new_data)
+autoplot(fc, filter(df, as.Date(datetime) > as.Date("2023-01-01")))
+
+fc2 <- forecast(fit2, new_data = new_data)
+autoplot(fc2, filter(df, as.Date(datetime) > as.Date("2023-01-01")))
+
+fc3 <- forecast(fit3, new_data = new_data)
+autoplot(fc3, filter(df, as.Date(datetime) > as.Date("2022-06-01")))
+
+autoplot(df, PM2.5)
+
+
 
