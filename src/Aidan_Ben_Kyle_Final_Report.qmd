@@ -5,6 +5,9 @@ date: today
 format:
   pdf:
     self-contained: true
+    margin-left: 75pt
+    margin-right: 75pt
+    fig-align: center
 documentclass: article
 execute:
   warning: false
@@ -60,12 +63,16 @@ df <- data %>%
 
 df_daily %>%
   autoplot(PM2.5) +
-  geom_hline(yintercept = 35, color = "red", linetype = "dashed") +
-  geom_hline(yintercept = 12, color = "blue", linetype = "dashed")
+  geom_hline(mapping = aes(yintercept = 35, color = "Yearly Avg."), linetype = "dashed") +
+  geom_hline(mapping = aes(yintercept = 12, color = "Daily Avg."), linetype = "dashed")+
+  labs(x = "Date", title = "Comparison of Air Quality to WHO Recommendations")+
+  scale_color_manual(name = "WHO Recommendations",
+                     values = c("Yearly Avg." = "blue", "Daily Avg." = "red"))+
+  theme(legend.position = "bottom")
 
 ```
 
-The World Health Organization recomends PM2.5 levels below $35ug/m^3$ for a daily average and below $12ug/m^3$ for a yearly average. The daily and yearly recomended levels are plotted in red and blue respectively. Only during the summer months are the PM2.5 levels below the WHO recomended daily limit.
+The World Health Organization recommends PM2.5 levels below $35ug/m^3$ for a daily average and below $12ug/m^3$ for a yearly average. The daily and yearly recommended levels are plotted in red and blue respectively. Only during the summer months are the PM2.5 levels below the WHO recommended daily limit.
 
 
 # Seasonality
@@ -73,16 +80,17 @@ The World Health Organization recomends PM2.5 levels below $35ug/m^3$ for a dail
 ```{r seasonality}
 
 gg_season(df, PM2.5, period = "1 year") +
-  labs(title = "Yearly Seasonality")
+  labs(x = "Month", title = "Yearly Seasonality")
 
 gg_season(df, PM2.5, period = "1 month") +
-  labs(title = "Monthly Seasonality")
+  labs(x = "Week",title = "Monthly Seasonality")
 
 gg_season(df, PM2.5, period = "1 week") +
-  labs(title = "Weekly Seasonality")
+  labs(x = "Day", title = "Weekly Seasonality")+
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.75))
 
 gg_season(df, PM2.5, period = "1 day") +
-  labs(title = "Daily Seasonality")
+  labs(x = "Hour", title = "Daily Seasonality")
 
 ```
 
@@ -99,11 +107,13 @@ corrplot(M)
 
 ```
 
-High concentrations of CO, NO, NO2, NOx, PM2.5, and PM10 generally occur at the same time. High concentrations of Benzene, Toluene, and Xylene generally occur at the same time.
+High concentrations of CO, NO, NO2, NOx, PM2.5, and PM10 generally occur at the same time. High concentrations of Benzene, Toluene, and Xylene generally occur at the same time. It is logical to believe that these chemicals would have similar sources of emission in either case.
 
 
 # PM2.5 as a Stationary Time Series
-Setup Box-Cox transformations.  
+
+The following code generates the proper $\lambda$ parameters for Box-Cox transformations.  
+
 ```{r setup_lamda_values}
 
 lambda_hourly_PM2.5 <- BoxCox.lambda(df$PM2.5)
@@ -119,19 +129,21 @@ lambda_monthly_PM2.5 <- BoxCox.lambda(df_monthly$PM2.5)
 df %>% 
   autoplot(difference(log(PM2.5), 24)) +
   labs(
-    title = "Log Transformation Insufficient for Variance Stabilization"
+    title = "Log Transformation of Differenced PM2.5",
+    y = "Log Transformed Values"
   )
 
 # Box-Cox
 df %>%
   autoplot(difference(box_cox(PM2.5, lambda_hourly_PM2.5), 24)) +
     labs(
-    title = "Box-Cox Transformation Shows Improved Variance Stabilization"
+    title = "Box-Cox Transformation of Differenced PM2.5",
+    y = "Box-Cox Transformed Values"
   )
 
 ```
 
-Differencing PM2.5 centers the data.  Using a log transform does not quite alter the data into a stationary time series. However, using a Box-Cox transform does create a fairly stationary time series.
+Differencing PM2.5 centers the data.  Using a log transform does not quite alter the data into a stationary time series. However, using a Box-Cox transform does create a fairly stationary time series, allowing for the application of ARIMA models for forecasting and interpolation purposes.
 
 
 # Check for Constant Variance
@@ -153,7 +165,12 @@ for (i in 1:10){
 
 ```{r log_variance_plot}
 
-plot(seq(1,10),delhi_stat$logvar, ylim = c(0,1))
+plot(seq(1,10),
+     delhi_stat$logvar, 
+     ylim = c(0,1), 
+     xlab = "Date Decile",
+     ylab = "Variance",
+     main = "Variance of Log Transformed PM2.5")
 
 ```
 
@@ -161,7 +178,11 @@ The variance constantly changing even with log transformation.
 
 ```{r boxcox_variance_plot}
 
-plot(seq(1,10),delhi_stat$boxvar, ylim = c(0,9))
+plot(seq(1,10),delhi_stat$boxvar, 
+     ylim = c(0,9),
+     xlab = "Date Decile",
+     ylab = "Variance",
+     main = "Variance of Box-Cox Transformed PM2.5")
 
 ```
 
@@ -207,10 +228,10 @@ ggplot(data = df_scaled) +
 ```
 
 # Focus on PM2.5
-The correlation plot previously showed that a high concentration of PM2.5 is linked to high concentrations of PM10, Nitrogen Oxides, and Carbon Monoxide. PM2.5 is also the greatest multiple above the recomended limit, shown in the prior boxplots. Additionally, PM2.5 is generally the most common measure of air quality. As such, focus will be given to PM2.5 for the remainder of this report.
+The correlation plot previously showed that a high concentration of PM2.5 is linked to high concentrations of PM10, Nitrogen Oxides, and Carbon Monoxide. PM2.5 is also the greatest multiple above the recommended limit, shown in the prior boxplots. Additionally, PM2.5 is generally the most common measure of air quality. As such, focus will be given to PM2.5 for the remainder of this report.
 
 ### Effects on Air Quality in Delhi
-The air quality in Delhi is majorly influenced by the Diwali festival and the burning season. The festival impacts air quality through increast vehicle polution and a significant number of fireworks. Additonally, farmers burn fields following harvest to improve next years crop, which contributes to the significant rise in PM2.5 concentrations before winter.
+The air quality in Delhi is majorly influenced by the Diwali festival and the burning season. The festival impacts air quality through increased vehicle pollution and a significant number of fireworks. Additionally, farmers burn fields following harvest to improve next years crop, which contributes to the significant rise in PM2.5 concentrations before winter.
 
 ### Add Variables to Indicate the Diwali Festival and the Burning Season
 ```{r dummy_variables}
@@ -247,21 +268,30 @@ df <- df %>%
 
 df %>%
   autoplot(PM2.5) +
-  autolayer(filter(df, as.Date(datetime) %in% diwali_dates), color = "red")
+  autolayer(filter(df, as.Date(datetime) %in% diwali_dates), color = "red")+
+  labs(x = "Date", title = "Highlighted Diwali Season")
 
 df %>%
   autoplot(PM2.5) +
-  autolayer(filter(df, as.Date(datetime) %in% burning_dates), color = "red")
+  autolayer(filter(df, as.Date(datetime) %in% burning_dates), color = "red")+
+  labs(x = "Date", title = "Highlighted Burning Season")
 
 ```
 
 # Prophet Model
 
-```{r prophet_no_transform, eval = FALSE} 
+**Note:** All modeling beyond this point will use a train/test structure with 80% of the data used as training data and 20% used as test data.
 
-fit <- df %>%
+```{r prophet_model, eval = FALSE}
+
+df_hour_train <- df[1:floor(0.8*nrow(df)),]
+df_hour_test <- df[ceiling(0.8*nrow(df)):nrow(df),]
+
+prophet_lambda <- BoxCox.lambda(df_hour_train$PM2.5)
+
+fit <- df_hour_train %>%
   model(
-    prophet(box_cox(PM2.5, lambda_hourly_PM2.5) ~ is_diwali + is_burning_season +
+    prophet(box_cox(PM2.5, prophet_lambda) ~ is_diwali + is_burning_season +
         season(period = "day", order = 10) +
         season(period = "week", order = 5) +
         season(period = "month", order = 3) +
@@ -270,44 +300,88 @@ fit <- df %>%
   )
 
 new_data <- df %>%
-  new_data(n = 24 * 30 * 12) %>%  # About 1 year to forecast
+  new_data(n = 9788) %>%  # About 1 year to forecast
   mutate(
     is_diwali = as.integer(as.Date(datetime) %in% diwali_dates),
     is_burning_season = as.integer(as.Date(datetime) %in% burning_dates)
   )
 
-fc <- forecast(fit, new_data = new_data)
-autoplot(fc, df)
-autoplot(fc, filter(df, as.Date(datetime) > as.Date("2022-06-01")))
+```
+
+```{r load_model_fc, echo=FALSE}
+
+fit <- readRDS("../models/hourly_fit_prophet_trained.rds")
 
 ```
 
-![](../plots/hourly_prophet_forecast_full_box-cox.png)
-![](../plots/hourly_prophet_forecast_zoomed_box-cox.png)
+```{r prop_accuracy}
 
+accuracy(fit)
+```
 
-# Weekly ARIMIA with Fouier - Interpolation and STL Decomposition
+The Prophet model for hourly data has a very high RMSE and MAPE. The Mean Absolute Percent Error is ~96%, which is exceptionally high. This model is likely not the best fit for the data.
 
-```{r weekly_ARIMA_fc}
-# Optimize K:
-# K_candidates <- 1:22
-# results <- data.frame(K = numeric(), AICc = numeric())
-# for (K in K_candidates) {
-#   fit <- df_weekly %>%
-#     model(ARIMA(box_cox(PM2.5, lambda_weekly_PM2.5) ~ fourier(K = K)))
-#   data <- data.frame(K = K, AICc = glance(fit)$AICc)
-#   results <- bind_rows(results, data)
-# }
-# results %>%
-#   filter(AICc == min(results$AICc))
+```{r prophet_no_transform, eval = FALSE} 
+
+fc <- forecast(fit, df_hour_test)
+
+autoplot(fc, df_hour_train)+
+  labs(x = "Date", title = "Prophet Model Forecast for Test Data")
+autoplot(fc, filter(df_hour_train, as.Date(datetime) > as.Date("2021-01-01")))+
+    labs(x = "Date", title = "Prophet Model Forecast for Test Data")
+
+```
+
+![](../plots/prophet_fc_full_test.png)
+![](../plots/prophet_fc_zoom_test.png)
+
+Looking at the forecasts of the Prophet model, we can see why this model has such large error diagnostics. During the Diwali/Burning season, the Prophet model largely underestimates the PM2.5 values. In addition, the point estimates do not have nearly as much variation compared to the actual values of the data, which would also lead to more occurences of under/over-estimating, even outside of the burning season.
+
+Due to this behavior, an hourly Prophet model is likely not the best choice and can only really serve (visually) as a trend estimate for India's PM2.5 levels.
+
+# Weekly ARIMA with Fourier - Interpolation and STL Decomposition
+
+We now divert to the generation of models using the weekly aggregated data, as many model types would not give meaningful results on the hourly level.
+
+Due to many model types, such as STL and ETS, not being able to handle missing values, we first interpolate these missing values using a Dynamic Harmonic Regression (DHR) model.
+
+```{r weekly_train}
+df_week_train <- df_weekly[1:floor(0.8*nrow(df_weekly)),]
+df_week_test <- df_weekly[ceiling(0.8*nrow(df_weekly)):nrow(df_weekly),]
+
+```
+
+The following code optimizes the number of Fourier terms for a Dynamic Harmonic Regression model.
+
+```{r weekly_ARIMA_fit, eval=FALSE}
+
+#Optimize K:
+K_candidates <- 1:22
+results <- data.frame(K = numeric(), AICc = numeric())
+for (K in K_candidates) {
+  fit <- df_weekly %>%
+    model(ARIMA(box_cox(PM2.5, lambda_weekly_PM2.5) ~ fourier(K = K)))
+  data <- data.frame(K = K, AICc = glance(fit)$AICc)
+  results <- bind_rows(results, data)
+}
+results %>%
+  filter(AICc == min(results$AICc))
 # K = 7 was best with an AICc of 230.221
 
-fit <- readRDS("../models/weekly_fit_ARIMA(4,0,0)(1,0,0)[52].rds")
-# fit <- df_weekly %>%
-#   model(ARIMA(box_cox(PM2.5, lambda_weekly_PM2.5) ~ fourier(K = 7)))
+fit <- df_weekly %>%
+  model(ARIMA(box_cox(PM2.5, lambda_weekly_PM2.5) ~ fourier(K = 7)))
 
-fc <- forecast(fit, h = 104)
-autoplot(fc, df_weekly)
+```
+
+The optimized model was a DHR model with `K = 7`.
+
+```{r weekly_ARIMA_fc}
+
+fit <- readRDS("../models/weekly_fit_ARIMA(4,0,0)(1,0,0)[52].rds")
+
+report(fit)
+
+accuracy(fit)
 
 ```
 
@@ -315,10 +389,12 @@ autoplot(fc, df_weekly)
 
 df_weekly %>%
   autoplot(PM2.5) +
-  autolayer(fitted(fit), .fitted, color = "red")
+  autolayer(fitted(fit), .fitted, color = "red")+
+  labs(x = "Date", title = "Fitted Values of ARIMA Interpolation Model")
 
 ```
-The ARIMA fit with K = 7 fourier terms looks decent. It will be used to interpolate the weekly data for an STL decomposition.
+
+The DHR/ARIMA fit with K = 7 fourier terms looks decent. It will be used to interpolate the weekly data for an STL decomposition and further modeling.
 
 ```{r weekly_ARIMA_interpolation}
 
@@ -327,14 +403,16 @@ df_weekly_filled <- interpolate(fit, df_weekly)
 df_weekly_filled %>%
   autoplot(PM2.5) +
   labs(
-    title = "PM2.5 Interpolated Weekly Series"
+    title = "PM2.5 Interpolated Weekly Series",
+    x = "Date"
   )
 ```
 
 
+# STL Decomposition
 
-### STL Decomposition
 ```{r STL_decomposition}
+
 dc <- df_weekly_filled %>%
   model(STL(PM2.5 ~ trend(window = 104) + season(window = "periodic")))
 
@@ -348,13 +426,218 @@ components(dc) %>%
 
 Decreasing trend is promising indicating a drop of around $30ug/m^3$ over 7 years. However, the average level of particulates is still far above the recomended level.  
 
-# What's Next?
-Test/Train set? (prophet doesn't have a glance() option so comparing it with other modesl will require this).  
+# STL/ETS, ARIMA, Neural Net, and Combination Models
 
-Optimize K for ARIMA at hourly level? Will take awhile...  
+```{r split_filled}
 
-Clean commented code (one method that works is to put the commented code in a block that has eval = FALSE and the readRDS portion in a code block that has echo = FALSE).
+df_filled_train <- df_weekly_filled[1:floor(0.8*nrow(df_weekly_filled)),]
+df_filled_test <- df_weekly_filled[ceiling(0.8*nrow(df_weekly_filled)):nrow(df_weekly_filled),]
+
+lambda_week_train <- BoxCox.lambda(df_week_train$PM2.5)
+```
+
+```{r opt_filled_ARIMA, eval = FALSE}
+
+K_candidates <- 1:22
+results <- data.frame(K = numeric(), AICc = numeric())
+
+for (K in K_candidates) {
+  fit <- df_filled_train %>%
+    model(ARIMA(box_cox(PM2.5, lambda_week_train) ~ fourier(K = K)))
+  data <- data.frame(K = K, AICc = glance(fit)$AICc)
+  results <- bind_rows(results, data)
+}
+results %>%
+  filter(AICc == min(results$AICc))
+# K = 6 was best with an AICc of -74.51495
+```
+
+Optimizing `K` as a fourier term reveals that the best parameter is `K = 6`
+
+``` {r weekly_models, eval = FALSE}
+
+# log transform to constrain above 0
+decomp <- decomposition_model(
+    STL(log(PM2.5) ~ trend(window = 104) + season(window = "periodic")),
+    ETS(season_adjust ~ season("N"))
+)
+
+weekly_fit <- df_filled_train |>
+  model(decomp = decomp,
+        nnet = NNETAR(box_cox(PM2.5, BoxCox.lambda(df_filled_train$PM2.5))),
+        arima = ARIMA(box_cox(PM2.5, lambda_week_train) ~ fourier(K = 6)))|>
+  mutate(comb = (decomp + nnet + arima) / 3)
 
 
 
+```
+
+```{r load_comb_model, echo = FALSE}
+weekly_fit <- readRDS("../models/weekly_fit_combination.rds")
+```
+
+```{r report_comb}
+
+report(weekly_fit$decomp[[1]])
+report(weekly_fit$nnet[[1]])
+report(weekly_fit$arima[[1]])
+
+```
+
+
+The STL/ETS decomposition model was set to predict `log(PM2.5)` to constrain predictions to positive values. This yielded an `ETS(A,N,N)` model with parameters $\alpha=0.1590716,\ell_0=4.102751$ for the seasonally adjusted data.
+
+The NNAR model yielded a neural network with 3 lagged inputs, 1 yearly seasonal lagged input, and 2 nodes in the hidden layer.
+
+The Dynamic Harmonic Regression model produced a linear model with `ARIMA(0,1,2)(1,0,0)[52]` errors. This indicates that the errors have 1 first order difference, a second order moving average component, and a first order seasonal (yearly) autoregressive component.
+
+We will forecast each of these models for the 20% testing data that we had segmented above. This is a total of 59 weeks. The combination model will not have prediction intervals by default, so we use the `generate()` function to bootstrap 1000 sample paths into prediction intervals.
+
+```{r weekly_forecasts, eval = FALSE}
+
+weekly_fc <- weekly_fit |>
+    forecast(h=59)
+
+futures <- weekly_fit[,4] |>
+  # Generate 1000 future sample paths
+  generate(h = 59, times = 1000) |>
+  group_by(.model) |>
+  summarise(
+    dist = distributional::dist_sample(list(.sim))
+  ) |>
+  ungroup() |>
+  # Create fable object
+  as_fable(index = week, key = .model,
+           distribution = dist, response = "PM2.5")
+
+# Add intervals to comb forecast
+weekly_fc$PM2.5[which(weekly_fc$.model=="comb")] <- futures$dist
+
+```
+
+```{r STL_Plot, eval=FALSE}
+weekly_fc |> filter(.model == "decomp") |>
+    autoplot(df_weekly_filled)+
+    labs(x = "Week", title = "STL/ETS Model Test Forecasts")
+```
+
+![](../plots/STL_ETS_Test_Forecasts.png)
+
+```{r NNET_Plot, eval=FALSE}
+
+weekly_fc |> filter(.model == "nnet") |>
+    autoplot(df_weekly_filled)+
+    labs(x = "Week", title = "NNAR Model Test Forecasts")
+```
+
+![](../plots/NNAR_Test_Forecasts.png)
+
+```{r ARIMA_Plot, eval=FALSE}
+
+weekly_fc |> filter(.model == "arima") |>
+    autoplot(df_weekly_filled)+
+    labs(x = "Week", title = "Dynamic Harmonic Regresion Model Test Forecasts")
+```
+
+![](../plots/ARIMA_Test_Forecasts.png)
+
+```{r comb_plot, eval=FALSE}
+weekly_fc |> filter(.model == "comb") |>
+    autoplot(df_weekly_filled)+
+    labs(x = "Week", title = "Combination Model Test Forecasts")
+
+```
+
+![](../plots/Comb_Test_Forecasts.png)
+
+```{r joint_plot, eval = FALSE}
+weekly_fc |> autoplot(df_weekly_filled)+
+    facet_grid(rows = vars(.model)) +
+    labs(x = "Week", title = "PM2.5 Stacked Plot for Comparison")
+```
+
+![](../plots/Joint_Model_Plot.png)
+
+### Model Evaluation
+
+Visually, the STL/ETS and Combination models follow the test data the closest in their forecasts compared to the remaining models. The DHR/ARIMA model has very wide prediction interval, so it may be slightly less useful, as we are less certain that the real values will be closer to the point estimates. The Neural Net model is less optimal due to a few of the test data falling outside of even the 95% prediction intervals.
+
+We can evaluate the performance of these models and their prediction intervals below. For the evaluation of distributional forecasts, we use the Continuous Ranked Probability Score (CRPS).
+
+```{r crps, eval = FALSE}
+
+weekly_fc |>
+  accuracy(df_filled_test, list(crps = CRPS))
+```
+
+```{r read_crps, echo = FALSE}
+
+crps <- readRDS("../tables/crps_table_comb.rds")
+crps
+```
+
+We see from these CRPS values that the Combination model has the lowest score, and thus gives the best distributional forecasts out of the 4 models. The DHR model's distributional forecasts are far worse than the rest, as it has a **significantly** higher CRPS.
+
+```{r acc, eval = FALSE}
+
+weekly_fc |> accuracy(df_weekly_filled) |> select(.model, RMSE, MAPE)
+```
+
+```{r read_acc, echo = FALSE}
+
+acc <- readRDS("../tables/acc_table_comb.rds")
+acc |> select(.model, RMSE, MAPE)
+```
+
+Using RMSE and MAPE as error evaluation metrics, it is clear that the DHR and Combination forecasts perform the best out of the 4 models. The Combination model has an RMSE that is higher than the DHR model, but only marginally so. However, the Combination model's average absolute percent error is ~2% less that that of the DHR model, which is a notable difference.
+
+Since the Combination model has similar or lower error to the DHR model but **significantly** better distributional forecasts, it is recommended to utilize the Combination model for proper forecasting.
+
+# Forecasting Into the Future
+
+Now that we have chosen a model for proper forecasting, we aim to forecast 104 weeks (roughly 2 years) into the future and report on changes in the quality of Delhi's air.
+
+```{r new_forecast, eval=FALSE}
+
+new_data <- df_filled_train %>%
+    new_data(n = 59+104)
+
+new_fc <- weekly_fit$comb[[1]] |>
+    forecast(new_data = new_data)
+
+new_futures <- weekly_fit[,4] |>
+  # Generate 1000 future sample paths
+  generate(h = 59+104, times = 1000) |>
+  group_by(.model) |>
+  summarise(
+    dist = distributional::dist_sample(list(.sim))
+  ) |>
+  ungroup() |>
+  # Create fable object
+  as_fable(index = week, key = .model,
+           distribution = dist, response = "PM2.5")
+
+new_fc$PM2.5 <- new_futures$dist
+
+new_fc <- new_fc |> filter(week > df_filled_test$week[59])
+
+new_fc |> autoplot(df_weekly_filled)+
+    labs(x = "Week", title = "Combination Model Forecast (104 Weeks)")
+
+```
+
+![](../plots/Comb_Model_2Years.png)
+
+## Conclusions
+
+From the forecasts above, we can determine the following:
+
+ * Delhi, India is projected to see a decrease in PM2.5 air pollution within the next 2 years, based on point estimates
+   * The distributional forecasts still allow for a potential increase in PM2.5 air pollutants
+ 
+ * The lowest estimate of PM2.5 quantities will occur in Week 32 of 2023 (August).
+   * Estimate: 33.15853 $\mu g$/$m^3$
+ 
+ * The highest estimate of PM2.5 quantities will occur on Week 51 of 2023 (December).
+   * Estimate: 189.5962 $\mu g$/$m^3$
 

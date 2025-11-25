@@ -17,7 +17,7 @@ df %>% autoplot(logPM25)
 df %>% autoplot(BCPM25)
 
 # Try dynamic harmonic first
-delhi_dynamo <- df |>
+delhi_dynamic <- df |>
     model(
         season = ARIMA(
             log(PM2.5) ~ PDQ(0,1,0, period = 24),
@@ -26,9 +26,9 @@ delhi_dynamo <- df |>
             log(PM2.5) ~ PDQ(0,0,0) + fourier(K=12)
             )
         )
-report(delhi_dynamo$fourier24[[1]])
+report(delhi_dynamic$fourier24[[1]])
 
-dynamo_fc <- delhi_dynamo$fourier24[[1]] |>
+dynamo_fc <- delhi_dynamic$fourier24[[1]] |>
     forecast(h = "1 month")
 
 dynamo_fc |> autoplot(df[45000:48936,])
@@ -43,7 +43,7 @@ df_stl <- df |>
 
 
 delhi_decomp <- decomposition_model(
-    STL(PM2.5 ~ season(window = Inf)),
+    STL(PM2.5 ~ season(window = 104)),
     ETS(season_adjust ~ season("N"))
 )
 
@@ -54,9 +54,11 @@ delhi_stl <- df_stl |>
 report(delhi_stl)
 
 stl_fc <- delhi_stl |>
-    forecast(h = "1 year")
+    forecast(h = "5 weeks")
 
-stl_fc |> autoplot(df_stl,level = 95)
+stl_fc |> autoplot(df_stl)
+
+delhi_stl |> gg_tsresiduals()
 
 # Daily Modeling
 #=================================================================
@@ -71,17 +73,17 @@ lambda <- BoxCox.lambda(daily_df$PM2.5)
 daily_df |> autoplot(box_cox(PM2.5, lambda) |> difference(1))
 
 
-daily_dynamo <- daily_df |>
+daily_dynamic <- daily_df |>
     model(
-        delhi_dynamo = ARIMA(box_cox(PM2.5, BoxCox.lambda(PM2.5)) ~ pdq(d = 1) + PDQ(0,0,0) + fourier(K = 2))
+        dynamic = ARIMA(box_cox(PM2.5, BoxCox.lambda(PM2.5)) ~ pdq(d = 1) + PDQ(0,0,0) + fourier(K = 2))
     )
-report(daily_dynamo)
-accuracy(daily_dynamo)
+report(daily_dynamic)
+accuracy(daily_dynamic)
 
-daily_fc <- daily_dynamo |>
+daily_fc <- daily_dynamic |>
     forecast(h = "6 month")
 
-daily_aug <- daily_dynamo |>
+daily_aug <- daily_dynamic |>
     augment()
 
 daily_fc |> autoplot(daily_df)+
