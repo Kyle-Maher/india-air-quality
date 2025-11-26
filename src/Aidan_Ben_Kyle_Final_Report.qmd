@@ -23,14 +23,13 @@ Conduct exploratory data analysis; visualize trends, seasonality, and stationari
 library(fpp3) # Time Series Plots and Forecasting
 library(corrplot) # Correlation Plot
 library(forecast) # BoxCox Transformation
-library(scales) # Log Scale Tick Lables
+library(scales) # Log Scale Tick Labels
 library(fable.prophet) # Prophet Model
 set.seed(280)  # Reproducibility
 
 ```
 
 # Setup 
-<!-- Include Data Cleaning Steps? -->
 ### Read Data
 ```{r read_data}
 
@@ -58,8 +57,8 @@ df <- data %>%
 ```
 
 
-# Recomended Limit for PM2.5
-```{r PM2.5_limts}
+# Recommended Limit for PM2.5
+```{r PM2.5_limits}
 
 df_daily %>%
   autoplot(PM2.5) +
@@ -189,7 +188,7 @@ plot(seq(1,10),delhi_stat$boxvar,
 The Box-Cox transformation results in decreasing but mostly stable variance.
 
 
-# World Health Organization Recomended Limits:
+# World Health Organization Recommended Limits
 CO: ≤9 ppm  
 PM₂.₅: ≤15 µg/m³  
 PM₁₀: ≤45 µg/m³  
@@ -199,7 +198,7 @@ Toluene: ≤260 µg/m³
 Xylene: ≤870 µg/m³  
 
 
-# Scaled Parameters by Recomended Limits
+# Scaled Parameters by Recommended Limits
 ```{r scaled_boxplots}
 
 df_scaled <- data %>%
@@ -222,8 +221,8 @@ ggplot(data = df_scaled) +
     theme(axis.text.x = element_text(angle = 45, vjust = 0.6)) +
     labs(
       x = NULL,
-      y = "Multiple of Recomended Limit",
-      title = "Air Quality Parameters by Recomended Limit"
+      y = "Multiple of Recommended Limit",
+      title = "Air Quality Parameters by Recommended Limit"
     )
 ```
 
@@ -335,7 +334,7 @@ autoplot(fc, filter(df_hour_train, as.Date(datetime) > as.Date("2021-01-01")))+
 ![](../plots/prophet_fc_full_test.png)
 ![](../plots/prophet_fc_zoom_test.png)
 
-Looking at the forecasts of the Prophet model, we can see why this model has such large error diagnostics. During the Diwali/Burning season, the Prophet model largely underestimates the PM2.5 values. In addition, the point estimates do not have nearly as much variation compared to the actual values of the data, which would also lead to more occurences of under/over-estimating, even outside of the burning season.
+Looking at the forecasts of the Prophet model, we can see why this model has such large error diagnostics. During the Diwali/Burning season, the Prophet model largely underestimates the PM2.5 values. In addition, the point estimates do not have nearly as much variation compared to the actual values of the data, which would also lead to more occurrences of under/over-estimating, even outside of the burning season.
 
 Due to this behavior, an hourly Prophet model is likely not the best choice and can only really serve (visually) as a trend estimate for India's PM2.5 levels.
 
@@ -355,7 +354,7 @@ The following code optimizes the number of Fourier terms for a Dynamic Harmonic 
 
 ```{r weekly_ARIMA_fit, eval=FALSE}
 
-#Optimize K:
+# Optimize K:
 K_candidates <- 1:22
 results <- data.frame(K = numeric(), AICc = numeric())
 for (K in K_candidates) {
@@ -375,9 +374,13 @@ fit <- df_weekly %>%
 
 The optimized model was a DHR model with `K = 7`.
 
-```{r weekly_ARIMA_fc}
+```{r read_weekly_ARIMA_fc}
 
 fit <- readRDS("../models/weekly_fit_ARIMA(4,0,0)(1,0,0)[52].rds")
+
+```
+
+```{r weekly_ARIMA_fc}
 
 report(fit)
 
@@ -412,6 +415,8 @@ df_weekly_filled %>%
 # STL Decomposition
 
 ```{r STL_decomposition}
+#| fig-height: 8
+#| fit-width: 8
 
 dc <- df_weekly_filled %>%
   model(STL(PM2.5 ~ trend(window = 104) + season(window = "periodic")))
@@ -419,12 +424,12 @@ dc <- df_weekly_filled %>%
 components(dc) %>%
   autoplot() +
   labs(
-    title = "STL Decomposition Componenets"
+    title = "STL Decomposition Components"
   )
 
 ```
 
-Decreasing trend is promising indicating a drop of around $30ug/m^3$ over 7 years. However, the average level of particulates is still far above the recomended level.  
+Decreasing trend is promising indicating a drop of around $30ug/m^3$ over 7 years. However, the average level of particulates is still far above the recommended level.  
 
 # STL/ETS, ARIMA, Neural Net, and Combination Models
 
@@ -484,6 +489,7 @@ report(weekly_fit$arima[[1]])
 
 ```
 
+### Assessing Models
 
 The STL/ETS decomposition model was set to predict `log(PM2.5)` to constrain predictions to positive values. This yielded an `ETS(A,N,N)` model with parameters $\alpha=0.1590716,\ell_0=4.102751$ for the seasonally adjusted data.
 
@@ -491,7 +497,7 @@ The NNAR model yielded a neural network with 3 lagged inputs, 1 yearly seasonal 
 
 The Dynamic Harmonic Regression model produced a linear model with `ARIMA(0,1,2)(1,0,0)[52]` errors. This indicates that the errors have 1 first order difference, a second order moving average component, and a first order seasonal (yearly) autoregressive component.
 
-We will forecast each of these models for the 20% testing data that we had segmented above. This is a total of 59 weeks. The combination model will not have prediction intervals by default, so we use the `generate()` function to bootstrap 1000 sample paths into prediction intervals.
+We will forecast each of these models for the 20% testing data that we had segmented above. This is a total of 59 weeks. The combination model will not have prediction intervals by default, so the `generate()` function will be used to bootstrap 1000 sample paths into prediction intervals.
 
 ```{r weekly_forecasts, eval = FALSE}
 
@@ -628,16 +634,21 @@ new_fc |> autoplot(df_weekly_filled)+
 
 ![](../plots/Comb_Model_2Years.png)
 
-## Conclusions
+## Forecast Conclusion
 
-From the forecasts above, we can determine the following:
+From the forecast above, the following can be determined:
 
- * Delhi, India is projected to see a decrease in PM2.5 air pollution within the next 2 years, based on point estimates
-   * The distributional forecasts still allow for a potential increase in PM2.5 air pollutants
+ * Delhi, India is projected to see a slight decrease in PM2.5 air pollution from 2023 to 2025, based on point estimates
+   * The forecast intervals still allow for a potential increase in PM2.5 air pollutants
  
- * The lowest estimate of PM2.5 quantities will occur in Week 32 of 2023 (August).
+ * The lowest point estimate of PM2.5 quantities is on Week 32 of 2023 (August).
    * Estimate: 33.15853 $\mu g$/$m^3$
  
- * The highest estimate of PM2.5 quantities will occur on Week 51 of 2023 (December).
+ * The highest point estimate of PM2.5 quantities is on Week 51 of 2023 (December).
    * Estimate: 189.5962 $\mu g$/$m^3$
+
+# Conclusion
+
+Given PM2.5 air quality data for Delhi, India, spanning from September 2017 to March 2023, several forecasting models were implemented including Prophet, STL/ETS, ARIMA, Neural Net, and a Combination Model wich averages the predictions from the STL/ETS, ARIMA, and Neural Net models. The Combination Model was chosen after assessing each models CRPS, RMSE, and MAPE. The Combination Model was then used to forecast two years past the given data.  
+Based on that forecast's point estimates we project a slight overall decrease in PM2.5 air pollution and continued significant seasonal variation. However, the increasing width of the forecast intervals result in the both the 80% and 95% confidence intervals allowing for significant increase of PM2.5 air pollutants within the projected forecast intervals.
 
